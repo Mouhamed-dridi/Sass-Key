@@ -1,7 +1,7 @@
 # LicenseHub
 
 Small admin app for generating and tracking license keys for the SaaS products you deliver to clients.
-Next.js + DaisyUI, one local SQLite file for storage.
+Next.js + DaisyUI. For testing, all data is kept in one plain text file (`data/db.txt`); swap in a real database later (see "Storage").
 
 ## Run it
 
@@ -12,7 +12,7 @@ npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
-Needs Node 20+. The database is created on first run at `data/licenses.db` (override with `DB_PATH`).
+Needs Node 20+. The data file is created on first use at `data/db.txt` (override with `DB_PATH`).
 
 ## What's in it
 
@@ -63,7 +63,16 @@ See `.env.example`.
 
 Products, client types, pricing models and key terms live in `lib/constants.js`.
 
-## Backups
+## Storage (test setup)
 
-Back up `data/licenses.db`. Because keys are hashed, losing the file means losing every key you issued
-(they cannot be regenerated from the hashes).
+All clients and keys live in `lib/db.js`, which reads and writes one text file (JSON inside).
+Only key hashes are stored. Because keys are hashed, losing the file means losing every key you issued
+(they cannot be regenerated from the hashes), so back it up if the data matters.
+
+**Netlify and other serverless hosts:** the code folder is read-only there, so the app automatically falls back to
+the OS temp folder. That copy is **temporary**: it is wiped on restarts and is not shared between server instances,
+so clients and keys will disappear. Fine for a demo, not for real licenses.
+
+**Moving to a real database:** replace the functions exported from `lib/db.js` (`listClients`, `getClient`,
+`createClient`, `listKeys`, `insertKey`, `setRevoked`, `verifyLicense`, `getStats`). Nothing else in the app
+touches the storage. They are synchronous now; a real database makes them async, so add `await` where they are called.

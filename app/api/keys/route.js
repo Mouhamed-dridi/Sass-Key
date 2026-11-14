@@ -55,7 +55,7 @@ export async function POST(request) {
         { status: 201, headers: NO_STORE },
       );
     } catch (err) {
-      if (err?.code !== "SQLITE_CONSTRAINT_UNIQUE") throw err;
+      if (err?.code !== "DUPLICATE_KEY") throw err;
     }
   }
   return NextResponse.json({ error: "Could not generate a unique key." }, { status: 500 });
