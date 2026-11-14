@@ -15,9 +15,10 @@ LicenseHub: Next.js 16 App Router (JavaScript, no TypeScript) + Tailwind 4 / Dai
 - Server pages read the store and pass plain props to `"use client"` views; mutations go through `fetch` to `/api/*` then `router.refresh()`. Follow this pattern.
 - `lib/db.js` is the only storage layer: synchronous JSON-in-text-file access to `data/db.txt` (override with `DB_PATH`), atomic tmp+rename writes, fallback to the OS temp dir when the target is read-only. Keep all storage logic there.
 - Neon is linked via `neon.ts` and `.neon` (gitignored). `neon init` populated `.env.local` with `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and branch variables — never print their values. The app still uses `data/db.txt`; storage has **not** been migrated to Postgres.
-- `lib/db.js` and `lib/keys.js` use `node:fs` / `node:crypto` and are server-only. Never import them from `"use client"` files.
+- `lib/db.js`, `lib/keys.js`, and `lib/passwords.js` use `node:fs` / `node:crypto` and are server-only. Never import them from `"use client"` files.
 - Every API handler needs `export const runtime = "nodejs"`. Pages that read the store need `export const dynamic = "force-dynamic"` — otherwise Next may prerender/cache against a missing data file.
 - Auth: `proxy.js` redirects unauthenticated page requests to `/login` and returns `401` for admin APIs; `/api/verify` stays public. Login sessions are signed HMAC cookies (`lib/auth.js`) with credentials from `ADMIN_USER`/`ADMIN_PASSWORD`; `AUTH_SECRET` signs sessions and falls back to the password. HTTP Basic auth is still accepted for scripts. If you add another public route, update the matcher in `proxy.js`.
+- Users added in Settings are stored in `data/db.txt` via `listUsers`/`findUserByUsername`/`createUser`; passwords are scrypt hashes from `lib/passwords.js` (never plaintext). Session tokens carry the username in `sub`; verification accepts any non-empty signed subject. The env admin stays the built-in administrator and its username is reserved.
 - Next expands `$VAR` in env files and treats `#` as a comment. Quote values containing `#` or `$`, and escape a literal `$` as `\$` in `.env.local` (the same rule applies to `DATABASE_URL` passwords).
 
 ## Domain invariants
@@ -26,11 +27,12 @@ LicenseHub: Next.js 16 App Router (JavaScript, no TypeScript) + Tailwind 4 / Dai
 - Only the SHA-256 hash and `last4` are stored. The plaintext key exists solely in the `POST /api/keys` response — never log it or persist it.
 - Terms start on the first successful `POST /api/verify`, not at generation. Status is derived by `keyStatus()` (`unused`/`active`/`expired`/`revoked`), not stored; don't add a status field.
 - `lib/constants.js` is the single source for SaaS products, client types, pricing models, and license terms. Validation, APIs, and UI all read it; edit it instead of hardcoding lists.
-- `data/db.txt` (gitignored) holds all clients and keys. Deleting or corrupting it loses every key irrecoverably (the loader throws on corrupt JSON rather than wiping it). On serverless hosts the read-only fallback is temporary and per-instance.
+- `data/db.txt` (gitignored) holds all clients, keys, and added users. Deleting or corrupting it loses every key irrecoverably (the loader throws on corrupt JSON rather than wiping it). On serverless hosts the read-only fallback is temporary and per-instance, so added users may not persist across restarts.
 
 ## UI
 
 - Tailwind 4 + DaisyUI 5 are configured in `app/globals.css` through `@plugin "daisyui"`; there is no `tailwind.config.js`. Use DaisyUI component classes.
+- Dark mode is a `data-theme` attribute (`light`/`dark`) persisted in `localStorage` under `licensehub-theme` (`lib/theme.js`). `app/layout.js` injects `THEME_SCRIPT` before first paint and sets `suppressHydrationWarning` on `<html>`; keep that script and the Settings toggle in sync.
 - Format dates with the UTC helpers in `lib/format.js`, not `toLocaleDateString`, so server and client render identical markup. Keep key display masked via `maskedKey()`.
 
 <!-- BEGIN:nextjs-agent-rules -->

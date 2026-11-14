@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DashboardIcon, KeyIcon, LogoutIcon, UsersIcon } from "@/components/Icons";
+import { DashboardIcon, KeyIcon, LogoutIcon, SettingsIcon, UsersIcon } from "@/components/Icons";
 
 const ITEMS = [
   { href: "/", label: "Dashboard", Icon: DashboardIcon },
   { href: "/clients", label: "Clients", Icon: UsersIcon },
   { href: "/generator", label: "Key Generator", Icon: KeyIcon },
+  { href: "/settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 export default function Sidebar() {

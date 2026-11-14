@@ -19,6 +19,7 @@ Needs Node 20+. The data file is created on first use at `data/db.txt` (override
 - **Dashboard**: client / key counts and recent activity.
 - **Clients**: table plus an "Add client" pop-up (name, type, register date, description, pricing model, SaaS).
 - **Key Generator**: choose client, SaaS and term, generate. The full key is shown once.
+- **Settings**: switch between light and dark mode, and add extra admin users who can sign in.
 
 ## Key format
 
@@ -62,6 +63,10 @@ Sessions are signed HMAC cookies and last 7 days. Set `AUTH_SECRET` to sign them
 (if unset, `ADMIN_PASSWORD` is used). HTTP Basic auth is still accepted for scripts. Do this before exposing the
 app beyond your own machine. See `.env.example`.
 
+The built-in administrator is always `ADMIN_USER` / `ADMIN_PASSWORD`. Additional users can be created in **Settings**;
+their passwords are stored as scrypt hashes in the app data file. On serverless hosts that file is temporary, so those
+accounts may not survive a restart — keep using the built-in administrator there.
+
 Use single quotes for env values containing `#` or `$`, and escape a literal `$` as `\$` — Next expands variables
 in env files and otherwise truncates the value at `#`.
 
@@ -71,9 +76,11 @@ Products, client types, pricing models and key terms live in `lib/constants.js`.
 
 ## Storage (test setup)
 
-All clients and keys live in `lib/db.js`, which reads and writes one text file (JSON inside).
+All clients, keys and added users live in `lib/db.js`, which reads and writes one text file (JSON inside).
 Only key hashes are stored. Because keys are hashed, losing the file means losing every key you issued
 (they cannot be regenerated from the hashes), so back it up if the data matters.
+
+The **Settings** page saves your light/dark choice in the browser (`localStorage`), not in the data file.
 
 **Netlify and other serverless hosts:** the code folder is read-only there, so the app automatically falls back to
 the OS temp folder. That copy is **temporary**: it is wiped on restarts and is not shared between server instances,

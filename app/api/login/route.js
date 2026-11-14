@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { findUserByUsername } from "@/lib/db";
+import { verifyPassword } from "@/lib/passwords";
 import {
   SESSION_COOKIE,
   createSessionToken,
@@ -28,15 +30,17 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400, headers: NO_STORE });
   }
 
-  const username = typeof body?.username === "string" ? body.username : "";
+  const username = typeof body?.username === "string" ? body.username.trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
 
-  const [userOk, passwordOk] = await Promise.all([
-    safeEqual(username, getAdminUser()),
-    safeEqual(password, process.env.ADMIN_PASSWORD),
-  ]);
+  const adminUser = getAdminUser();
+  const isAdmin = await safeEqual(username.toLowerCase(), adminUser.toLowerCase());
+  const adminPasswordOk = isAdmin && (await safeEqual(password, process.env.ADMIN_PASSWORD));
 
-  if (!userOk || !passwordOk) {
+  const user = isAdmin ? null : findUserByUsername(username);
+  const userPasswordOk = user ? verifyPassword(password, user.password_hash) : false;
+
+  if (!adminPasswordOk && !userPasswordOk) {
     return NextResponse.json(
       { error: "Invalid username or password." },
       { status: 401, headers: NO_STORE },
@@ -44,6 +48,10 @@ export async function POST(request) {
   }
 
   const response = NextResponse.json({ ok: true }, { headers: NO_STORE });
-  response.cookies.set(SESSION_COOKIE, await createSessionToken(), sessionCookieOptions());
+  response.cookies.set(
+    SESSION_COOKIE,
+    await createSessionToken(adminPasswordOk ? adminUser : user.username),
+    sessionCookieOptions(),
+  );
   return response;
 }
