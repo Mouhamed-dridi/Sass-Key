@@ -55,9 +55,15 @@ Invalid: `{ "valid": false, "reason": "invalid_key" | "wrong_product" | "revoked
 
 ## Protecting the admin UI
 
-Set `ADMIN_PASSWORD` (and optionally `ADMIN_USER`, default `admin`) in `.env.local` to require HTTP Basic auth
-on every page and API route except `/api/verify`. Do this before exposing the app beyond your own machine.
-See `.env.example`.
+Set `ADMIN_PASSWORD` (and optionally `ADMIN_USER`, default `admin`) in `.env.local` to require sign-in at `/login`.
+Unauthenticated page requests are redirected there; admin API requests return `401`. `/api/verify` always stays public.
+
+Sessions are signed HMAC cookies and last 7 days. Set `AUTH_SECRET` to sign them independently of the password
+(if unset, `ADMIN_PASSWORD` is used). HTTP Basic auth is still accepted for scripts. Do this before exposing the
+app beyond your own machine. See `.env.example`.
+
+Use single quotes for env values containing `#` or `$`, and escape a literal `$` as `\$` — Next expands variables
+in env files and otherwise truncates the value at `#`.
 
 ## Customising
 

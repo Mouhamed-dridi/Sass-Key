@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DashboardIcon, KeyIcon, UsersIcon } from "@/components/Icons";
+import { DashboardIcon, KeyIcon, LogoutIcon, UsersIcon } from "@/components/Icons";
 
 const ITEMS = [
   { href: "/", label: "Dashboard", Icon: DashboardIcon },
@@ -17,6 +17,14 @@ export default function Sidebar() {
   function closeDrawer() {
     const toggle = document.getElementById("nav-drawer");
     if (toggle) toggle.checked = false;
+  }
+
+  async function signOut() {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/login");
+    }
   }
 
   return (
@@ -47,9 +55,15 @@ export default function Sidebar() {
         })}
       </ul>
 
-      <p className="mt-auto px-5 py-4 text-xs opacity-60">
-        Keys are stored as SHA-256 hashes and shown only once.
-      </p>
+      <div className="mt-auto px-3 py-4">
+        <button type="button" className="btn btn-ghost btn-sm w-full justify-start" onClick={signOut}>
+          <LogoutIcon />
+          Sign out
+        </button>
+        <p className="mt-2 px-2 text-xs opacity-60">
+          Keys are stored as SHA-256 hashes and shown only once.
+        </p>
+      </div>
     </aside>
   );
 }
