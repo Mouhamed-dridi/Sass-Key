@@ -1,7 +1,7 @@
 # LicenseHub
 
 Small admin app for generating and tracking license keys for the SaaS products you deliver to clients.
-Next.js + DaisyUI. For testing, all data is kept in one plain text file (`data/db.txt`); swap in a real database later (see "Storage").
+Next.js + DaisyUI, with all data (users, clients, license keys) stored in PostgreSQL (Neon).
 
 ## Run it
 
@@ -12,7 +12,8 @@ npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
-Needs Node 20+. The data file is created on first use at `data/db.txt` (override with `DB_PATH`).
+Needs Node 20+ and a PostgreSQL connection string in `DATABASE_URL` (put it in `.env.local`; on Netlify add it under
+Site configuration → Environment variables). The tables are created automatically on first use.
 
 ## What's in it
 
@@ -64,8 +65,8 @@ Sessions are signed HMAC cookies and last 7 days. Set `AUTH_SECRET` to sign them
 app beyond your own machine. See `.env.example`.
 
 The built-in administrator is always `ADMIN_USER` / `ADMIN_PASSWORD`. Additional users can be created in **Settings**;
-their passwords are stored as scrypt hashes in the app data file. On serverless hosts that file is temporary, so those
-accounts may not survive a restart — keep using the built-in administrator there.
+they are saved in the `users` table and their passwords are stored only as scrypt hashes (never plain text), so they
+survive restarts and redeploys.
 
 Use single quotes for env values containing `#` or `$`, and escape a literal `$` as `\$` — Next expands variables
 in env files and otherwise truncates the value at `#`.
@@ -74,18 +75,20 @@ in env files and otherwise truncates the value at `#`.
 
 Products, client types, pricing models and key terms live in `lib/constants.js`.
 
-## Storage (test setup)
+## Storage
 
-All clients, keys and added users live in `lib/db.js`, which reads and writes one text file (JSON inside).
-Only key hashes are stored. Because keys are hashed, losing the file means losing every key you issued
-(they cannot be regenerated from the hashes), so back it up if the data matters.
+All storage code is in `lib/db.js`. Three tables are created automatically on first use:
 
-The **Settings** page saves your light/dark choice in the browser (`localStorage`), not in the data file.
+| Table          | Holds                                                                 |
+| -------------- | --------------------------------------------------------------------- |
+| `users`        | username, scrypt `password_hash`, created date (accounts that sign in) |
+| `clients`      | name, type, register date, description, pricing model, SaaS            |
+| `license_keys` | SHA-256 `key_hash`, last 4 characters, term, status dates, revoked flag |
 
-**Netlify and other serverless hosts:** the code folder is read-only there, so the app automatically falls back to
-the OS temp folder. That copy is **temporary**: it is wiped on restarts and is not shared between server instances,
-so clients and keys will disappear. Fine for a demo, not for real licenses.
+Because keys are stored only as hashes, they cannot be regenerated: losing the database means losing every key you
+issued. Use Neon's backups/branches before any destructive change.
 
-**Moving to a real database:** replace the functions exported from `lib/db.js` (`listClients`, `getClient`,
-`createClient`, `listKeys`, `insertKey`, `setRevoked`, `verifyLicense`, `getStats`). Nothing else in the app
-touches the storage. They are synchronous now; a real database makes them async, so add `await` where they are called.
+`DATABASE_URL` is a secret. Keep it in `.env.local` or the host's environment variables, never in the repo.
+If it is ever exposed, rotate the password in the Neon console and update the variable everywhere.
+
+The **Settings** page saves your light/dark choice in the browser (`localStorage`), not in the database.

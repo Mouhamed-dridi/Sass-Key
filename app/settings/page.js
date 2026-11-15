@@ -5,11 +5,11 @@ import { listUsers } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" subtitle="Appearance and team access." />
-      <SettingsView users={listUsers()} adminUser={getAdminUser()} />
+      <SettingsView users={await listUsers()} adminUser={getAdminUser()} />
     </>
   );
 }

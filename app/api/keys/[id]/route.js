@@ -18,7 +18,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: '"revoked" must be true or false.' }, { status: 400 });
   }
 
-  const found = setRevoked(Number(id), body.revoked);
+  const found = await setRevoked(Number(id), body.revoked);
   if (!found) return NextResponse.json({ error: "Key not found." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

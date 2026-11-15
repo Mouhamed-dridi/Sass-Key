@@ -3,6 +3,6 @@ import { listClients } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default function ClientsPage() {
-  return <ClientsView clients={listClients()} />;
+export default async function ClientsPage() {
+  return <ClientsView clients={await listClients()} />;
 }

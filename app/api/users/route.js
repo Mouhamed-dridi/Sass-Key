@@ -26,7 +26,7 @@ export async function POST(request) {
       { status: 409, headers: NO_STORE },
     );
   }
-  if (findUserByUsername(value.username)) {
+  if (await findUserByUsername(value.username)) {
     return NextResponse.json(
       { error: "That username already exists." },
       { status: 409, headers: NO_STORE },
@@ -34,7 +34,7 @@ export async function POST(request) {
   }
 
   try {
-    const user = createUser({
+    const user = await createUser({
       username: value.username,
       password_hash: hashPassword(value.password),
     });

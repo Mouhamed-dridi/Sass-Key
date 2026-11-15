@@ -37,7 +37,7 @@ export async function POST(request) {
   const isAdmin = await safeEqual(username.toLowerCase(), adminUser.toLowerCase());
   const adminPasswordOk = isAdmin && (await safeEqual(password, process.env.ADMIN_PASSWORD));
 
-  const user = isAdmin ? null : findUserByUsername(username);
+  const user = isAdmin ? null : await findUserByUsername(username);
   const userPasswordOk = user ? verifyPassword(password, user.password_hash) : false;
 
   if (!adminPasswordOk && !userPasswordOk) {

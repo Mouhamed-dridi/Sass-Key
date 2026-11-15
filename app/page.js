@@ -8,10 +8,10 @@ import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  const stats = getStats();
-  const recentClients = listClients().slice(0, 5);
-  const recentKeys = listKeys().slice(0, 5);
+export default async function DashboardPage() {
+  const stats = await getStats();
+  const recentClients = (await listClients()).slice(0, 5);
+  const recentKeys = (await listKeys()).slice(0, 5);
 
   const cards = [
     { label: "Clients", value: stats.clients, note: "registered" },

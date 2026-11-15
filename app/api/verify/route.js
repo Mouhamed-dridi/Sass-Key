@@ -27,6 +27,6 @@ export async function POST(request) {
   }
 
   const saas = typeof body.saas === "string" ? body.saas : undefined;
-  const result = verifyLicense(hashKey(body.key), saas);
+  const result = await verifyLicense(hashKey(body.key), saas);
   return NextResponse.json(result, { headers: NO_STORE });
 }

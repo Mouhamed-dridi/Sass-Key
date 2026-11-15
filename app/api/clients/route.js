@@ -16,6 +16,6 @@ export async function POST(request) {
   const { value, error } = parseClientInput(body);
   if (error) return NextResponse.json({ error }, { status: 400 });
 
-  const client = createClient(value);
+  const client = await createClient(value);
   return NextResponse.json({ client }, { status: 201 });
 }

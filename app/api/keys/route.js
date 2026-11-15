@@ -26,7 +26,7 @@ export async function POST(request) {
   if (!SAAS_LIST.includes(body?.saas)) {
     return NextResponse.json({ error: "Choose a valid SaaS." }, { status: 400 });
   }
-  const client = getClient(Number(body?.client_id));
+  const client = await getClient(Number(body?.client_id));
   if (!client) {
     return NextResponse.json({ error: "Client not found." }, { status: 400 });
   }
@@ -35,7 +35,7 @@ export async function POST(request) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const key = generateKey(licenseType.code);
     try {
-      const id = insertKey({
+      const id = await insertKey({
         client_id: client.id,
         saas: body.saas,
         type: licenseType.code,

@@ -7,18 +7,19 @@ LicenseHub: Next.js 16 App Router (JavaScript, no TypeScript) + Tailwind 4 / Dai
 - `npm install` — Node 20+.
 - `npm run dev` — http://localhost:3000
 - `npm run build` / `npm start` — there is no lint, typecheck, or test script and no CI. `npm run build` is the only automated check.
-- The build prints a Turbopack warning about dynamic filesystem access in `lib/db.js`. That is expected from the configurable `DB_PATH`; don't chase it.
+- Local runs and builds that render pages need `DATABASE_URL` in `.env.local` (Neon). On Netlify it is a site environment variable. There is no file-based fallback.
 
 ## Architecture and boundaries
 
 - `app/` = pages + route handlers, `components/` = client views, `lib/` = all logic. `@/*` maps to the repo root (`jsconfig.json`), e.g. `@/lib/db`.
 - Server pages read the store and pass plain props to `"use client"` views; mutations go through `fetch` to `/api/*` then `router.refresh()`. Follow this pattern.
-- `lib/db.js` is the only storage layer: synchronous JSON-in-text-file access to `data/db.txt` (override with `DB_PATH`), atomic tmp+rename writes, fallback to the OS temp dir when the target is read-only. Keep all storage logic there.
-- Neon is linked via `neon.ts` and `.neon` (gitignored). `neon init` populated `.env.local` with `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and branch variables — never print their values. The app still uses `data/db.txt`; storage has **not** been migrated to Postgres.
-- `lib/db.js`, `lib/keys.js`, and `lib/passwords.js` use `node:fs` / `node:crypto` and are server-only. Never import them from `"use client"` files.
-- Every API handler needs `export const runtime = "nodejs"`. Pages that read the store need `export const dynamic = "force-dynamic"` — otherwise Next may prerender/cache against a missing data file.
+- `lib/db.js` is the only storage layer: PostgreSQL (Neon) through `pg`, all functions **async** (always `await` them). It creates the `users`, `clients` and `license_keys` tables on first use, under an advisory lock so parallel serverless cold starts don't race. Keep all SQL there.
+- Neon is linked via `neon.ts` and `.neon` (gitignored). `.env.local` holds `DATABASE_URL` — never print or commit its value. `lib/db.js` strips `channel_binding` (node-postgres doesn't support it) and pins `sslmode=require` to `verify-full`.
+- Dates reach the UI as strings: `registered_at` as `YYYY-MM-DD`, timestamps as ISO 8601 (custom `pg` type parsers in `lib/db.js`). `revoked` is a boolean.
+- `lib/db.js`, `lib/keys.js`, and `lib/passwords.js` are server-only (`pg` / `node:crypto`). Never import them from `"use client"` files.
+- Every API handler needs `export const runtime = "nodejs"`. Pages that read the store need `export const dynamic = "force-dynamic"` — otherwise Next may prerender them at build time.
 - Auth: `proxy.js` redirects unauthenticated page requests to `/login` and returns `401` for admin APIs; `/api/verify` stays public. Login sessions are signed HMAC cookies (`lib/auth.js`) with credentials from `ADMIN_USER`/`ADMIN_PASSWORD`; `AUTH_SECRET` signs sessions and falls back to the password. HTTP Basic auth is still accepted for scripts. If you add another public route, update the matcher in `proxy.js`.
-- Users added in Settings are stored in `data/db.txt` via `listUsers`/`findUserByUsername`/`createUser`; passwords are scrypt hashes from `lib/passwords.js` (never plaintext). Session tokens carry the username in `sub`; verification accepts any non-empty signed subject. The env admin stays the built-in administrator and its username is reserved.
+- Users added in Settings are stored in the Postgres `users` table via `listUsers`/`findUserByUsername`/`createUser`; passwords are scrypt hashes from `lib/passwords.js` (never plaintext). Session tokens carry the username in `sub`; verification accepts any non-empty signed subject. The env admin stays the built-in administrator and its username is reserved.
 - Next expands `$VAR` in env files and treats `#` as a comment. Quote values containing `#` or `$`, and escape a literal `$` as `\$` in `.env.local` (the same rule applies to `DATABASE_URL` passwords).
 
 ## Domain invariants
@@ -27,7 +28,7 @@ LicenseHub: Next.js 16 App Router (JavaScript, no TypeScript) + Tailwind 4 / Dai
 - Only the SHA-256 hash and `last4` are stored. The plaintext key exists solely in the `POST /api/keys` response — never log it or persist it.
 - Terms start on the first successful `POST /api/verify`, not at generation. Status is derived by `keyStatus()` (`unused`/`active`/`expired`/`revoked`), not stored; don't add a status field.
 - `lib/constants.js` is the single source for SaaS products, client types, pricing models, and license terms. Validation, APIs, and UI all read it; edit it instead of hardcoding lists.
-- `data/db.txt` (gitignored) holds all clients, keys, and added users. Deleting or corrupting it loses every key irrecoverably (the loader throws on corrupt JSON rather than wiping it). On serverless hosts the read-only fallback is temporary and per-instance, so added users may not persist across restarts.
+- The Postgres database holds all clients, keys, and added users. Losing it loses every key irrecoverably (only hashes are stored), so keep Neon backups/branches in mind before destructive changes. First activation in `verifyLicense` is a conditional `UPDATE ... WHERE activated_at IS NULL`; keep it atomic.
 
 ## UI
 
